@@ -1,6 +1,6 @@
 {
-  "name": "k8s-security-skills",
-  "version": "1.0.0",
+  "name": "k8s-security",
+  "version": "1.0.1",
   "description": "Comprehensive Kubernetes security guardrails for AI code generation",
   "author": {
     "name": "MetalBear"

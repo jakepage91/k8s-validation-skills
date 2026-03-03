@@ -14,7 +14,7 @@
         "repo": "jakepage91/k8s-security-skills"
       },
       "description": "Enforce security best practices when generating Kubernetes manifests, Dockerfiles, Helm charts, and application code. Automatically applies NEVER/ALWAYS guardrails across 10 security domains.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "MetalBear"
       },
