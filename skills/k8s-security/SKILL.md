@@ -76,8 +76,8 @@ These rules MUST be followed in all generated code:
 
 1. **Identify the resource type** and load relevant reference files
 2. **Apply all applicable NEVER/ALWAYS rules** from loaded references
-3. **Write the file to disk** using the appropriate path (e.g. `k8s/<resource-name>.yaml`, or alongside existing manifests if the project already has a manifest directory). Do not just display the content — always write the file unless the user explicitly asks to see it first.
-4. **Include comments** in the written file explaining security decisions when non-obvious
+3. **Write the manifest file to disk** using the appropriate path (e.g. `k8s/<resource-name>.yaml`, or alongside existing manifests if the project already has a manifest directory). Write clean YAML — do not clutter it with security comment blocks.
+4. **Update `SECURITY-POSTURE.md`** in the project root (create it if it does not exist). Add an entry for each file written, recording which security controls were applied and why. Use the format defined in the Response Format section below.
 5. **Confirm what was written** and provide the user with any additional steps needed (e.g., "create the Secret separately with: kubectl create secret...")
 
 ### When Reviewing Existing Code
@@ -85,40 +85,36 @@ These rules MUST be followed in all generated code:
 1. **Load relevant reference files** based on resource types present
 2. **Scan for NEVER rule violations** - these are critical findings
 3. **Check for missing ALWAYS requirements** - these are high-priority findings
-4. **Report findings** with severity, location, and remediation
-5. **Offer to fix** with correct code examples
+4. **Update `SECURITY-POSTURE.md`** with a findings section for the reviewed files, listing each violation with its severity, location, and remediation
+5. **Offer to fix** identified issues directly
 
 ### Response Format
 
-When generating Kubernetes resources, always structure responses as:
+Generated manifest files should be clean YAML with no security comment blocks. All security reasoning is recorded in `SECURITY-POSTURE.md` instead, using this structure:
 
-```yaml
-# Security controls applied:
-# - [List each security control and why it was applied]
-#
-# Additional steps required:
-# - [Any manual steps the user needs to take]
+```markdown
+## `k8s/<resource-name>.yaml` — <Kind> (<date>)
 
-apiVersion: ...
-kind: ...
-metadata:
-  ...
-spec:
-  ...
+**Controls applied:**
+- `readOnlyRootFilesystem: true` + `emptyDir` at `/tmp` — file upload feature requires writable temp dir; root FS locked down per pod-container-security Rule 5
+- `automountServiceAccountToken: false` — no K8s API access required
+- `NetworkPolicy` — restricts ingress to llm-gateway namespace only
+- `runAsNonRoot: true`, `runAsUser: 1000` — non-root execution enforced
+- Resource limits set: 256Mi–512Mi memory, 250m–500m CPU
+
+**Additional steps required:**
+- Create the API key Secret separately: `kubectl create secret generic ...`
 ```
 
-When identifying security issues:
+When identifying security issues during a review, append a findings section:
 
-```
-## Security Findings
+```markdown
+## Security Review: `<file>` (<date>)
 
 ### CRITICAL: [Issue Title]
-- **Location**: file:line or resource name
-- **Rule Violated**: NEVER/ALWAYS rule reference
-- **Risk**: What could happen if not fixed
-- **Remediation**: How to fix it
-
-[Code showing WRONG vs CORRECT]
+- **Rule**: NEVER/ALWAYS reference
+- **Risk**: What could happen
+- **Fix**: Exact remediation
 ```
 
 ## Quick Reference: Security Controls by Resource Type
