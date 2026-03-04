@@ -106,10 +106,11 @@ Once your code has been generated with the skill's guardrails applied, you can a
 
 The audit command:
 1. Discovers all Kubernetes manifests, Dockerfiles, Helm charts, and CI/CD pipeline files
-2. Checks every file against all 10 security domains (NEVER/ALWAYS rules)
-3. Classifies each finding by severity: **CRITICAL**, **HIGH**, **MEDIUM**, **INFO**
-4. Writes results to `SECURITY-POSTURE.md` in the project root with recommended fixes
-5. Outputs a summary of finding counts and the top 3 most urgent issues
+2. Loads only the reference files relevant to what was found — skipping rules that can't apply (e.g. Helm rules are skipped if no `Chart.yaml` exists)
+3. Checks every file against applicable NEVER/ALWAYS rules
+4. Classifies each finding by severity: **CRITICAL**, **HIGH**, **MEDIUM**, **INFO**
+5. Writes results to `SECURITY-POSTURE.md` in the project root with recommended fixes
+6. Outputs a summary of finding counts and the top 3 most urgent issues
 
 > **Read-only**: the audit never modifies your manifests. Findings include concrete remediation snippets so you can apply fixes deliberately when ready — this matters when manifests are already running in production.
 
