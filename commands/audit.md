@@ -49,17 +49,27 @@ For each discovered file, check every applicable NEVER/ALWAYS rule. Classify eac
 - **MEDIUM** — a best-practice gap that increases risk but is not an immediate violation
 - **INFO** — an observation or improvement opportunity
 
-## Step 4: Write SECURITY-POSTURE.md
+## Step 4: Output findings
 
-Create or update `SECURITY-POSTURE.md` in the project root with the full audit results using this structure. Then ensure `SECURITY-POSTURE.md` is listed in `.gitignore` — append the entry if missing, creating `.gitignore` if it does not exist.
+Output findings directly in chat using this compact format, then write a minimal `SECURITY-POSTURE.md`. Ensure `SECURITY-POSTURE.md` is in `.gitignore`.
+
+**Chat output** — severity table then one line per finding:
+
+```
+CRITICAL N | HIGH N | MEDIUM N | INFO N
+
+[CRITICAL] path/to/file.yaml — Finding title (rule ref) → one-line fix
+[HIGH]     path/to/file.yaml — Finding title (rule ref) → one-line fix
+...
+```
+
+Only include MEDIUM/INFO if there are no CRITICAL/HIGH findings, or append them briefly after.
+
+**SECURITY-POSTURE.md** — minimal file:
 
 ```markdown
-# Kubernetes Security Posture
-
-> Last audited: <date> by k8s-security-skills
-> Scope: <path or "entire repository">
-
-## Summary
+# Security Posture
+> <date> · Scope: <path or "repo">
 
 | Severity | Count |
 |----------|-------|
@@ -68,36 +78,12 @@ Create or update `SECURITY-POSTURE.md` in the project root with the full audit r
 | MEDIUM   | N |
 | INFO     | N |
 
----
+## Findings
 
-## Findings by File
-
-### `<path/to/file.yaml>`
-
-#### CRITICAL: <Finding title>
-- **Rule**: NEVER rule reference (e.g. secrets-management Rule 1)
-- **Location**: line number or field path
-- **Risk**: What an attacker could do if this is not fixed
-- **Fix**: Exact remediation with corrected YAML/code snippet
-
-#### HIGH: <Finding title>
-...
-
----
-
-## Files with no findings
-
-- `path/to/clean-file.yaml` — all controls present
+| Sev | File | Issue | Fix |
+|-----|------|-------|-----|
+| CRITICAL | `file.yaml` | Finding title | One-line remediation |
+| HIGH | `file.yaml` | Finding title | One-line remediation |
 ```
 
-## Step 5: Summarise and recommend
-
-After writing SECURITY-POSTURE.md, output a concise summary in the chat:
-
-- The total finding counts by severity
-- The top 3 most urgent issues with a one-line description of each
-- A reminder that **no files have been modified** — this audit is read-only
-
-Do NOT auto-fix anything. The manifests may be running in production and changes require a deliberate deployment process. Instead, for each CRITICAL and HIGH finding, include a concrete recommendation in SECURITY-POSTURE.md under a `**Recommended fix:**` field so the user has everything they need to act when ready.
-
-If the user explicitly asks to fix a specific finding after the audit, address it then — one file at a time, with the user's confirmation before writing.
+Do NOT auto-fix anything. If the user asks to fix a specific finding after the audit, address it one file at a time with their confirmation.
