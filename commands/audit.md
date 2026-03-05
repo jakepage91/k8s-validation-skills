@@ -18,6 +18,7 @@ Within the determined scope, search for:
 - All Dockerfiles (`**/Dockerfile*`)
 - All Helm charts (`**/Chart.yaml`)
 - Any CI/CD pipeline files that deploy to Kubernetes (`.github/workflows/*.yml`, etc.)
+- Application code: search for files containing route/endpoint definitions using patterns like `@app.route`, `router.get`, `router.post`, `app.get`, `app.post`, `@router.`, `func.*Handler`, `http.HandleFunc` in `**/*.py`, `**/*.js`, `**/*.ts`, `**/*.go`, `**/*.java`, `**/*.rb`. Do **not** read all app files — only grep for these patterns to find files that define HTTP endpoints.
 
 List each file found before proceeding.
 
@@ -34,7 +35,8 @@ Based on what was found in Step 1, load only the reference files that apply. Do 
 | Any `Dockerfile*` or CI/CD pipeline file found | `references/supply-chain-security.md` |
 | Any `Chart.yaml` (Helm chart) found | `references/helm-manifest-security.md` |
 | Any manifest or code file referencing inter-service auth, mTLS, JWT, or service mesh annotations | `references/internal-service-auth.md` |
-| Any application code file (non-manifest) found | `references/file-handling-security.md` |
+| Any application code with HTTP endpoint definitions found | `references/app-security.md` |
+| Any application code with file upload or file path operations (`send_file`, `open(`, `fs.readFile`, `os.path`, `filepath.Join`) | `references/file-handling-security.md` |
 | Any file with LLM/AI indicators: filenames or content containing `llm`, `openai`, `anthropic`, `langchain`, `embeddings`, `prompt`, `completion` | `references/llm-ai-security.md` |
 | Any k8s manifest or application code found (i.e. almost always) | `references/observability-incident-response.md` |
 
