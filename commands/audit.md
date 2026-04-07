@@ -36,8 +36,10 @@ Based on what was found in Step 1, load only the reference files that apply. Do 
 | Any `Dockerfile*` or CI/CD pipeline file found | `references/supply-chain-security.md` |
 | Any `Chart.yaml` (Helm chart) found | `references/helm-manifest-security.md` |
 | Any manifest or code file referencing inter-service auth, mTLS, JWT, or service mesh annotations | `references/internal-service-auth.md` |
-| Any application code with HTTP endpoint definitions found | `references/app-security.md` |
-| Any application code with HTTP endpoints **or** database queries found | `references/code-logic.md` |
+| Any application code with HTTP endpoint definitions found | `references/app-security.md`, `references/correctness-http-and-types.md`, `references/correctness-api-contracts.md`, `references/correctness-test-coverage.md` |
+| Any application code with database queries found | `references/correctness-data-flow.md` |
+| Any application code with async/await patterns or error handling found | `references/correctness-async-and-errors.md` |
+| Any application code that reads environment variables, OR any manifest with `env` blocks, OR any Helm chart with `values.yaml` | `references/correctness-environment-config.md` |
 | Any application code with file upload or file path operations (`send_file`, `open(`, `fs.readFile`, `os.path`, `filepath.Join`) | `references/file-handling-security.md` |
 | Any file with LLM/AI indicators: filenames or content containing `llm`, `openai`, `anthropic`, `langchain`, `embeddings`, `prompt`, `completion` | `references/llm-ai-security.md` |
 | Any k8s manifest or application code found (i.e. almost always) | `references/observability-incident-response.md` |
@@ -51,21 +53,24 @@ For each discovered file, check every applicable NEVER/ALWAYS rule from both sec
 ### Security checks
 Apply all NEVER/ALWAYS rules from security reference files (secrets, pod security, RBAC, etc.).
 
-### Code logic checks (for application code files)
-For every HTTP handler / route, verify:
-1. **Parameter source matches HTTP method** — `req.body` only in POST/PUT/PATCH, `req.query`/`req.params` in GET/DELETE
-2. **SQL aliases match downstream property access** — if JS reads `row.slug`, the SQL must `SELECT ... AS slug`
-3. **WHERE clauses are not silently skipped** — conditional filters must validate required params, not silently return all rows
-4. **Response shape matches consumer expectations** — field names in the response must match what frontend/callers destructure
-5. **Async operations are properly awaited** — database calls, HTTP requests, file I/O
-6. **Data flows end-to-end** — a request param that's read must actually reach the query; a query result field must reach the response
+### Correctness checks (for application code files)
+For every HTTP handler, route, or background job, verify:
+1. **Parameter source matches HTTP method** — `req.body` only in POST/PUT/PATCH, `req.query`/`req.params` in GET/DELETE.
+2. **SQL aliases match downstream property access** — if JS reads `row.slug`, the SQL must `SELECT ... AS slug`.
+3. **WHERE clauses are not silently skipped** — conditional filters must validate required params, not silently return all rows.
+4. **Response shape matches consumer expectations** — field names in the response must match what frontend/callers destructure.
+5. **Async operations are properly awaited** — database calls, HTTP requests, file I/O.
+6. **Errors are not silently swallowed** — `catch { return [] }` and similar patterns hide real failures and must be flagged.
+7. **Data flows end-to-end** — a request param that's read must actually reach the query; a query result field must reach the response.
+8. **Environment variable names match the cluster** — for any `os.environ[...]` / `process.env.X` access, check whether a manifest in the repo defines the same name in an `env` block or `secretKeyRef`. Flag mismatches.
+9. **New endpoints have integration tests** — if a handler exists with no corresponding test in `tests/integration/` (or the project's equivalent), flag it.
 
 Classify each finding as:
 
-- **CRITICAL** — a NEVER rule is violated (e.g. hardcoded secret, privileged: true, wildcard RBAC) OR a logic bug that causes incorrect data to be returned silently (e.g. wrong parameter source, missing SQL alias, skipped WHERE clause)
-- **HIGH** — a required ALWAYS control is missing (e.g. no SecurityContext, no resource limits, no NetworkPolicy) OR a data-flow gap that produces wrong results under specific conditions
-- **MEDIUM** — a best-practice gap that increases risk but is not an immediate violation
-- **INFO** — an observation or improvement opportunity
+- **CRITICAL** — a NEVER rule is violated (security: hardcoded secret, privileged: true, wildcard RBAC; correctness: wrong parameter source, missing SQL alias, skipped WHERE clause, swallowed errors).
+- **HIGH** — a required ALWAYS control is missing (security: no SecurityContext, no resource limits, no NetworkPolicy; correctness: env var name mismatch with the cluster, no integration test for a new handler, response shape mismatch with a known consumer).
+- **MEDIUM** — a best-practice gap that increases risk but is not an immediate violation.
+- **INFO** — an observation or improvement opportunity.
 
 ## Step 4: Output findings
 

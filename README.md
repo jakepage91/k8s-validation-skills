@@ -1,94 +1,81 @@
 # Kubernetes Validation Skills
 
-A comprehensive collection of AI coding agent skills that validate Kubernetes manifests, application code, Dockerfiles, and Helm charts. These skills act as persistent guardrails — catching security misconfigurations, code logic errors, and data-flow bugs before they reach production.
+A Claude Code plugin that validates Kubernetes manifests, application code, Dockerfiles, and Helm charts. The skill activates automatically when you generate Kubernetes-related code, applying NEVER/ALWAYS rules across two equal halves: **security** and **correctness**.
+
+> The repo is named `k8s-security-skills` for historical reasons. The skill itself is `k8s-validation` and covers more than security alone.
+
+## What it validates
+
+### Security domains
+
+- **Secrets management**: never hardcode secrets, always use Kubernetes Secrets or external secret managers.
+- **Pod and container security**: SecurityContext hardening, resource limits, non-root execution.
+- **Network exposure and Ingress**: authentication on endpoints, NetworkPolicies, TLS requirements.
+- **Supply chain**: pinned dependencies, digest-pinned images, secure Dockerfiles.
+- **Internal service auth**: service-to-service auth, mTLS, JWT validation.
+- **File handling and path security**: path traversal prevention, input sanitization.
+- **LLM and AI workload security**: OWASP LLM Top 10 compliance.
+- **Helm and manifest generation**: secure templating, PodDisruptionBudgets, probes.
+- **RBAC and ServiceAccounts**: least privilege, dedicated ServiceAccounts.
+- **Observability and incident response**: secure logging, metrics, alerting.
+- **App security**: app-layer auth, IDOR, injection.
+
+### Correctness domains
+
+- **HTTP and types**: parameter source matches HTTP method, type coercion at boundaries, environment-dependent code paths.
+- **Data flow**: SQL aliases match downstream property access, WHERE clauses don't silently skip, request data reaches the query and the query result reaches the response.
+- **API contracts**: response shapes match consumers, pagination math is correct, breaking changes are versioned.
+- **Async and error handling**: missing `await` is flagged, error fallbacks don't swallow real failures.
+- **Environment configuration**: env var names in code match Kubernetes Secret keys and Helm values, required config fails fast at startup.
+- **Test coverage**: new endpoints ship with integration tests that exercise the actual risk, not just the happy path.
 
 ## Installation
 
-### Claude Code Plugin (recommended)
+### Claude Code plugin (recommended)
 
-```bash
+```
 /plugin install k8s-validation@jakepage91/k8s-security-skills
 ```
 
 The skill activates automatically when generating Kubernetes-related code. The audit command becomes available as `/k8s-validation:audit`.
 
-### Via --plugin-dir (local development)
-
-Clone the repository and load it directly:
+### Cursor
 
 ```bash
-git clone https://github.com/jakepage91/k8s-security-skills
-claude --plugin-dir ./k8s-security-skills
+git clone https://github.com/jakepage91/k8s-security-skills.git .k8s-validation
+
+cat >> .cursorrules << 'EOF'
+
+## Validation Rules
+Always read and follow the rules in .k8s-validation/skills/k8s-validation/SKILL.md
+when generating or modifying Kubernetes manifests, Dockerfiles, Helm charts, or
+application code that runs in Kubernetes.
+EOF
 ```
 
-## Available Skills
+### GitHub Copilot
 
-| Skill | Description |
-|-------|-------------|
-| **k8s-validation** | Kubernetes guardrails covering security, code logic, data-flow correctness, secrets, RBAC, networking, supply chain, and more |
+```bash
+git clone https://github.com/jakepage91/k8s-security-skills.git .k8s-validation
 
-## What This Validates
+mkdir -p .github
+cat >> .github/copilot-instructions.md << 'EOF'
 
-The k8s-validation skill enforces NEVER/ALWAYS rules across 11 domains:
-
-### Security
-1. **Secrets Management** - Never hardcode secrets, always use Kubernetes Secrets or external secret managers
-2. **Pod & Container Security** - SecurityContext hardening, resource limits, non-root execution
-3. **Network Exposure & Ingress** - Authentication on endpoints, NetworkPolicies, TLS requirements
-4. **Supply Chain Security** - Pinned dependencies, digest-pinned images, secure Dockerfiles
-5. **Internal Service Authentication** - Service-to-service auth, mTLS, JWT validation
-6. **File Handling & Path Security** - Path traversal prevention, input sanitization
-7. **LLM & AI Workload Security** - OWASP LLM Top 10 compliance
-8. **Helm & Manifest Generation** - Secure templating, PodDisruptionBudgets, probes
-9. **RBAC & Service Accounts** - Least privilege, dedicated service accounts
-10. **Observability & Incident Response** - Secure logging, metrics, alerting
-
-### Code Logic & Correctness
-11. **Code Logic** - HTTP method/parameter source mismatches, SQL alias/app code mismatches, silently skipped WHERE clauses, response shape mismatches, async/await errors, end-to-end data flow verification
-
-## How It Works
-
-When installed, the skill automatically activates when you:
-
-- Generate Kubernetes manifests (Deployments, Services, Ingress, etc.)
-- Write Dockerfiles or container configurations
-- Create Helm charts or Kustomize overlays
-- Implement webhook handlers or API endpoints
-- Write database queries or ORM code
-- Configure service-to-service authentication
-- Work with LLM/AI workloads in Kubernetes
-
-The AI assistant will:
-- Generate secure, correct code by default
-- Flag security issues and logic bugs in existing code
-- Trace data flow from request input through queries to response output
-- Suggest remediations with correct/incorrect examples
-
-## Example Usage
-
-```
-User: "Create a deployment for my Python API"
-
-AI: [Generates deployment with]:
-- runAsNonRoot: true
-- readOnlyRootFilesystem: true
-- allowPrivilegeEscalation: false
-- Resource requests and limits
-- Dedicated ServiceAccount
-- automountServiceAccountToken: false
-- Liveness and readiness probes
+## Validation Rules
+Always read and follow the rules in .k8s-validation/skills/k8s-validation/SKILL.md.
+EOF
 ```
 
-```
-User: "Add a GET endpoint that filters by conference"
+## What you get
 
-AI: [Validates]:
-- Parameters read from req.query (not req.body) for GET requests
-- SQL column aliases match the JS property names used downstream
-- WHERE clause doesn't silently return all rows when filter param is missing
-```
+Installing the plugin gives you two things at once:
 
-## Auditing Existing Code
+1. **The skill** (`k8s-validation`): NEVER/ALWAYS rules that load into the AI's context automatically when generating Kubernetes-related code. You don't invoke the skill; it just shapes what gets generated.
+2. **The audit command** (`/k8s-validation:audit`): an explicit, invokable check you can run on your codebase (or a specific path) to find rule violations in code that already exists.
+
+These map to two distinct validation layers: shaping what gets generated vs. checking what was generated. Skills are passive; commands are active. You use both.
+
+## Auditing existing code
 
 Audit the whole repository or a specific app at any point:
 
@@ -98,50 +85,27 @@ Audit the whole repository or a specific app at any point:
 ```
 
 The audit command:
-1. Discovers all Kubernetes manifests, Dockerfiles, Helm charts, CI/CD pipeline files, and application code with HTTP endpoints or database queries
-2. Loads only the reference files relevant to what was found
-3. **Reads application code files fully** and traces data flow end-to-end
-4. Checks every file against applicable NEVER/ALWAYS rules (security + code logic)
-5. Classifies each finding by severity: **CRITICAL**, **HIGH**, **MEDIUM**, **INFO**
-6. Writes results to `SECURITY-POSTURE.md` in the project root with recommended fixes
 
-> **Read-only**: the audit never modifies your code. Findings include concrete remediation snippets so you can apply fixes deliberately.
+1. Discovers Kubernetes manifests, Dockerfiles, Helm charts, CI/CD pipeline files, and application code with HTTP endpoints, database queries, file operations, async patterns, or environment variable access.
+2. Loads only the reference files relevant to what was found.
+3. Reads application code files fully and traces data flow end-to-end.
+4. Checks every file against applicable NEVER/ALWAYS rules from both security and correctness domains.
+5. Classifies each finding by severity: **CRITICAL**, **HIGH**, **MEDIUM**, **INFO**.
+6. Writes results to `SECURITY-POSTURE.md` in the project root with recommended fixes.
 
-Example `SECURITY-POSTURE.md` output:
+> The audit is read-only. It never modifies your code. Findings include concrete remediation snippets so you can apply fixes deliberately.
 
-```markdown
-# Security Posture
-
-> Last audited: 2026-03-05 by k8s-validation
-
-## Summary
-
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 3     |
-| HIGH     | 5     |
-| MEDIUM   | 2     |
-| INFO     | 1     |
-
-## Findings
-
-| Sev | File | Issue | Fix |
-|-----|------|-------|-----|
-| CRITICAL | `k8s/deployment.yaml` | Hardcoded API key in env | Use secretKeyRef |
-| CRITICAL | `src/routes/feed.js:18` | req.body in GET handler — filter silently skipped | Change to req.query |
-| CRITICAL | `src/routes/feed.js:39` | SQL column not aliased — JS reads r.slug but query returns r.conference | Add AS slug |
-```
-
-## Skill Components
+## Repository structure
 
 ```
 .
 ├── commands/
-│   └── audit.md              # /k8s-validation:audit slash command
+│   └── audit.md                          # /k8s-validation:audit slash command
 └── skills/k8s-validation/
-    ├── SKILL.md              # Main skill instructions (auto-triggered)
-    ├── README.md             # Skill documentation
-    └── references/           # Detailed rules
+    ├── SKILL.md                          # main skill instructions (auto-triggered)
+    ├── README.md                         # skill documentation
+    └── references/
+        # security
         ├── secrets-management.md
         ├── pod-container-security.md
         ├── network-exposure.md
@@ -153,13 +117,20 @@ Example `SECURITY-POSTURE.md` output:
         ├── rbac-service-accounts.md
         ├── observability-incident-response.md
         ├── app-security.md
-        ├── code-logic.md
+        # correctness
+        ├── correctness-http-and-types.md
+        ├── correctness-data-flow.md
+        ├── correctness-api-contracts.md
+        ├── correctness-async-and-errors.md
+        ├── correctness-environment-config.md
+        ├── correctness-test-coverage.md
+        # meta
         └── pre-push-checklist.md
 ```
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Pull requests are welcome. For major changes, open an issue first to discuss what you'd like to change.
 
 ## License
 
